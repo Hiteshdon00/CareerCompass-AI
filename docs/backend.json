@@ -1,0 +1,216 @@
+{
+  "entities": {
+    "CareerRoadmap": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CareerRoadmap",
+      "type": "object",
+      "description": "Represents a personalized career roadmap generated for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the career roadmap."
+        },
+        "roadmapData": {
+          "type": "string",
+          "description": "JSON string containing the detailed roadmap data, including roles, skills, and timelines."
+        },
+        "generationDate": {
+          "type": "string",
+          "description": "Date and time when the roadmap was generated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "roadmapData",
+        "generationDate"
+      ]
+    },
+    "SkillAssessment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SkillAssessment",
+      "type": "object",
+      "description": "Represents a user's skill assessment and its results.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the skill assessment."
+        },
+        "assessmentDate": {
+          "type": "string",
+          "description": "Date and time when the assessment was taken.",
+          "format": "date-time"
+        },
+        "results": {
+          "type": "string",
+          "description": "JSON string containing the assessment results."
+        }
+      },
+      "required": [
+        "id",
+        "assessmentDate",
+        "results"
+      ]
+    },
+    "JobRecommendation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "JobRecommendation",
+      "type": "object",
+      "description": "Represents a job recommendation for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the job recommendation."
+        },
+        "jobId": {
+          "type": "string",
+          "description": "Reference to Job. (Relationship: Job 1:N JobRecommendation)"
+        },
+        "recommendationDate": {
+          "type": "string",
+          "description": "Date and time when the job was recommended.",
+          "format": "date-time"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for the job recommendation."
+        }
+      },
+      "required": [
+        "id",
+        "jobId",
+        "recommendationDate"
+      ]
+    },
+    "Employer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Employer",
+      "type": "object",
+      "description": "Represents an employer (company) profile.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the employer."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the company."
+        },
+        "industry": {
+          "type": "string",
+          "description": "Industry of the company."
+        },
+        "culture": {
+          "type": "string",
+          "description": "Description of the company culture."
+        },
+        "values": {
+          "type": "string",
+          "description": "Description of the company values."
+        },
+        "website": {
+          "type": "string",
+          "description": "Company's website URL.",
+          "format": "uri"
+        },
+        "linkedinProfile": {
+          "type": "string",
+          "description": "Company's LinkedIn profile URL.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "industry"
+      ]
+    },
+    "Job": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Job",
+      "type": "object",
+      "description": "Represents a job posting.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the job posting."
+        },
+        "employerId": {
+          "type": "string",
+          "description": "Reference to Employer. (Relationship: Employer 1:N Job)"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the job."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the job."
+        },
+        "skillsRequired": {
+          "type": "array",
+          "description": "List of skills required for the job.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "type": "string",
+          "description": "Location of the job."
+        },
+        "postedDate": {
+          "type": "string",
+          "description": "Date when the job was posted.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "employerId",
+        "title",
+        "description",
+        "location"
+      ]
+    }
+  },
+  "auth": {
+    "providers": []
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/employers/{employerId}",
+        "definition": {
+          "entityName": "Employer",
+          "schema": {
+            "$ref": "#/backend/entities/Employer"
+          },
+          "description": "Stores employer profiles. Accessible for listing, but create/update restricted to authorized users (e.g., admins).",
+          "params": [
+            {
+              "name": "employerId",
+              "description": "The unique identifier of the employer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/jobs/{jobId}",
+        "definition": {
+          "entityName": "Job",
+          "schema": {
+            "$ref": "#/backend/entities/Job"
+          },
+          "description": "Stores job postings. Accessible for listing, but create/update restricted to authorized users (e.g., admins).",
+          "params": [
+            {
+              "name": "jobId",
+              "description": "The unique identifier of the job posting."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to align with the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database Authenticated Control), QAPs (Queries are not Filters), and Invariants. It leverages denormalization to ensure authorization independence and structural segregation to simplify security rules.\n\n**Authorization Independence:** Each document contains the necessary authorization data, removing the need for `get()` calls in security rules. For User-owned data (CareerRoadmaps, SkillAssessments, JobRecommendations), the `userProfileId` acts as the owner. This structure allows for atomic operations and simplifies security rules.\n\n**QAPs (Rules are not Filters):** The structure enables secure list operations by segregating data based on ownership and access requirements. User profiles are stored in a private collection (`/users/{userId}`) accessible only to the authenticated user. Employers and Jobs are stored in global collections (`/employers`, `/jobs`) allowing for public listing while controlling create/update access.\n\n**Additional Notes:**\n*   Timestamps are automatically managed by Firestore.\n*   The schema enforces naming conventions (e.g., `userProfileId` for ownership).\n*   The use of dedicated collections for different entity types promotes clarity and simplifies security rules."
+  }
+}

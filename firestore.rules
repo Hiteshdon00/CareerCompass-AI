@@ -1,0 +1,135 @@
+/**
+ * @fileoverview Firestore Security Rules for CareerCompass AI.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user profiles, career roadmaps, skill assessments, and job recommendations.
+ * Employers and Jobs are publicly listable but require authentication for creation and modification.
+ *
+ * Data Structure:
+ * - /users/{userId}: User profiles, accessible only by the authenticated user.
+ * - /users/{userId}/careerRoadmaps/{careerRoadmapId}: Career roadmaps for a specific user.
+ * - /users/{userId}/skillAssessments/{skillAssessmentId}: Skill assessments for a specific user.
+ * - /users/{userId}/jobRecommendations/{jobRecommendationId}: Job recommendations for a specific user.
+ * - /employers/{employerId}: Employer profiles, publicly listable, but create/update restricted.
+ * - /jobs/{jobId}: Job postings, publicly listable, but create/update restricted.
+ *
+ * Key Security Decisions:
+ * - User data is strictly private and only accessible to the authenticated user.
+ * - Listing of users is disallowed.
+ * - Public read access is granted for /employers and /jobs collections.
+ * - Create/update access for /employers and /jobs is denied.
+ *
+ * Denormalization for Authorization:
+ * - CareerRoadmap, SkillAssessment, and JobRecommendation documents contain a `userProfileId` field that MUST match the `userId` in the path. This allows for ownership checks without needing to perform additional reads.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Enforces that only the authenticated user can access their own profile.
+     * @path /users/{userId}
+     * @allow (read, write) if request.auth.uid == userId
+     * @deny (read, write) if request.auth.uid != userId
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing users is not permitted.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && resource.data.id == userId;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Enforces that only the owner of the user profile can access their career roadmaps.
+     * @path /users/{userId}/careerRoadmaps/{careerRoadmapId}
+     * @allow (read, write) if the user is the owner
+     * @deny (read, write) if the user is not the owner
+     * @principle Enforces user-ownership for career roadmaps.
+     */
+    match /users/{userId}/careerRoadmaps/{careerRoadmapId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userProfileId == userId;
+      allow update: if isOwner(userId) && resource.data.userProfileId == userId && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Enforces that only the owner of the user profile can access their skill assessments.
+     * @path /users/{userId}/skillAssessments/{skillAssessmentId}
+     * @allow (read, write) if the user is the owner
+     * @deny (read, write) if the user is not the owner
+     * @principle Enforces user-ownership for skill assessments.
+     */
+    match /users/{userId}/skillAssessments/{skillAssessmentId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userProfileId == userId;
+      allow update: if isOwner(userId) && resource.data.userProfileId == userId && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Enforces that only the owner of the user profile can access their job recommendations.
+     * @path /users/{userId}/jobRecommendations/{jobRecommendationId}
+     * @allow (read, write) if the user is the owner
+     * @deny (read, write) if the user is not the owner
+     * @principle Enforces user-ownership for job recommendations.
+     */
+    match /users/{userId}/jobRecommendations/{jobRecommendationId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userProfileId == userId;
+      allow update: if isOwner(userId) && resource.data.userProfileId == userId && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Allows public listing of employer profiles, but restricts create/update/delete operations.
+     * @path /employers/{employerId}
+     * @allow get, list: if true
+     * @deny create, update, delete: if true
+     * @principle Public read, restricted write.
+     */
+    match /employers/{employerId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Add role-based authorization for employer creation if needed
+      allow update: if false && resource != null; // TODO: Add role-based authorization for employer updates if needed
+      allow delete: if false && resource != null; // TODO: Add role-based authorization for employer deletes if needed
+    }
+
+    /**
+     * @description Allows public listing of job postings, but restricts create/update/delete operations.
+     * @path /jobs/{jobId}
+     * @allow get, list: if true
+     * @deny create, update, delete: if true
+     * @principle Public read, restricted write.
+     */
+    match /jobs/{jobId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Add role-based authorization for job creation if needed
+      allow update: if false && resource != null; // TODO: Add role-based authorization for job updates if needed
+      allow delete: if false && resource != null; // TODO: Add role-based authorization for job deletes if needed
+    }
+  }
+}
